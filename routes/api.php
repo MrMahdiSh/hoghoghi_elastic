@@ -20,4 +20,4 @@ use App\Http\Controllers\SearchController;
 // });
 
 
-Route::get('/search/{text}', [SearchController::class, 'search']);
+Route::get('/search', [SearchController::class, 'search']);
