@@ -14,8 +14,8 @@ use App\Http\Controllers\SearchController;
 |
 */
 
-Route::get('/', function () {
-    return view('welcome');
-});
+// Route::get('/', function () {
+//     return view('welcome');
+// });
 
-Route::get('/search', [SearchController::class, 'search']);
+// Route::get('/search/{text}', [SearchController::class, 'search']);

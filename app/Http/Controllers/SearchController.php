@@ -8,40 +8,30 @@ use Elastic\Elasticsearch\ClientBuilder;
 
 class SearchController extends Controller
 {
-    protected $elasticsearchService;
-
-    // public function __construct(ElasticsearchService $elasticsearchService)
-    // {
-    //     $this->elasticsearchService = $elasticsearchService;
-    // }
-
-    public function search(Request $request)
+    public function search($text)
     {
-        // Create Elasticsearch client
+        // Initialize Elasticsearch client
         $client = ClientBuilder::create()->build();
-        
-        // Get search query from request
-        $query = $request->input('q');
 
-        // Define Elasticsearch search parameters
-        $params = [
-            'index' => 'posts',
-            'body' => [
-                'query' => [
-                    'match' => [
-                        'title' => $query,
-                    ],
-                ],
+        // Define the search query
+        $elasticsearchQuery = [
+            'multi_match' => [
+                'query' => $text,
+                'fields' => ['content^3', 'title^2'], // Boosting title field over content
+                'analyzer' => 'persian_lowercase', // Use the custom analyzer
             ],
         ];
 
-        // Perform Elasticsearch search
-        $response = $client->search($params);
+        // Perform the search query
+        $response = $client->search([
+            'index' => 'ara_heyat', // Specify the index to search
+            'body' => [
+                'query' => $elasticsearchQuery
+            ]
+        ]);
 
-        // Extract search results
+        // Extract and return search results
         $hits = $response['hits']['hits'];
-
-        // Return search results as JSON
         return response()->json($hits);
     }
 }
