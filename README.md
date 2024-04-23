@@ -6,4 +6,4 @@ curl -XPUT "http://localhost:9200/ara_heyat/_settings" -H "Content-Type: applica
 
 
 
-{"search_queries":[{"text":"your-search-text-1","type":"and"},{"text":"your-search-text-2","type":"not"}]}
+[{"text":"your-search-text-1","type":"and"},{"text":"your-search-text-2","type":"not"}]

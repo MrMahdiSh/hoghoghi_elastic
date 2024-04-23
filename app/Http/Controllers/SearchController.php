@@ -13,17 +13,17 @@ class SearchController extends Controller
         // Get the search queries JSON from the request
         $searchQueriesJson = $request->input('search_queries');
 
-        
         // Decode the JSON to an array
         $searchQueries = json_decode($searchQueriesJson, true);
-        
-        return $searchQueries;
-        
+
         // Initialize Elasticsearch client
         $client = ClientBuilder::create()->build();
 
         // Initialize an array to store the Elasticsearch queries
         $elasticsearchQueries = [];
+
+        // Initialize an array to store words to exclude
+        $excludeWords = [];
 
         // Process each search query
         foreach ($searchQueries as $query) {
@@ -39,28 +39,25 @@ class SearchController extends Controller
                     ],
                 ];
             } elseif ($queryType === 'not') {
-                $elasticsearchQuery = [
-                    'bool' => [
-                        'must_not' => [
-                            [
-                                'match' => [
-                                    'content' => $queryText,
-                                ],
-                            ],
-                        ],
-                    ],
-                ];
+                // Extract words to exclude from the "not" query
+                $excludeWords[] = $queryText;
             }
 
             // Add the Elasticsearch query to the array
-            $elasticsearchQueries[] = $elasticsearchQuery;
+            $elasticsearchQueries[] = $elasticsearchQuery ?? null;
+        }
+
+        // Construct the must_not clause to exclude documents containing the specified words
+        $mustNotClause = [];
+        foreach ($excludeWords as $word) {
+            $mustNotClause[] = ['match' => ['content' => $word]];
         }
 
         // Combine all Elasticsearch queries using 'should' for 'and' queries
-        // and 'must_not' for 'not' queries
         $combinedQuery = [
             'bool' => [
                 'should' => $elasticsearchQueries,
+                'must_not' => $mustNotClause,
             ],
         ];
 
