@@ -16,6 +16,12 @@ class SearchController extends Controller
         // Decode the JSON to an array
         $searchQueries = json_decode($searchQueriesJson, true);
 
+        // Get the 'from_date' and 'to_date' from the request
+        $fromDate = str_replace('/', '؍', $request->input('from_date'));
+        $toDate = str_replace('/', '؍', $request->input('to_date'));
+
+        // return $fromDate;
+
         // Initialize Elasticsearch client
         $client = ClientBuilder::create()->build();
 
@@ -53,11 +59,22 @@ class SearchController extends Controller
             $mustNotClause[] = ['match' => ['content' => $word]];
         }
 
+        // Add date range filter to the Elasticsearch query
+        $dateRangeFilter = [
+            'range' => [
+                'date' => [
+                    'gte' => $fromDate,
+                    'lte' => $toDate,
+                ],
+            ],
+        ];
+
         // Combine all Elasticsearch queries using 'should' for 'and' queries
         $combinedQuery = [
             'bool' => [
                 'should' => $elasticsearchQueries,
                 'must_not' => $mustNotClause,
+                // 'filter' => $dateRangeFilter,
             ],
         ];
 
