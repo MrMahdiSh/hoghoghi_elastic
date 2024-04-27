@@ -63,7 +63,7 @@ class SearchController extends Controller
 
         // Perform the Elasticsearch search query
         $response = $client->search([
-            'index' => 'ara_heyat',
+            'index' => 'ara_heyat_takhasosi',
             'body' => [
                 'query' => $combinedQuery,
             ],
