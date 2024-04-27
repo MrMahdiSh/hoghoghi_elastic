@@ -16,6 +16,15 @@ class SearchController extends Controller
         // Decode the JSON to an array
         $searchQueries = json_decode($searchQueriesJson, true);
 
+        // Get the selected table from the request
+        $selectedTable = $request->input('table_name');
+
+        // Define the default tables to search across
+        $defaultTables = ['ara_heyat', 'ara_heyat_takhasosi', 'moghararat', 'nazarat_mashverati', 'qazayi', 'posts', 'ara_jadid'];
+
+        // If a specific table is selected, use only that table
+        $tablesToSearch = ($selectedTable && in_array($selectedTable, $defaultTables)) ? [$selectedTable] : $defaultTables;
+
         // Initialize Elasticsearch client
         $client = ClientBuilder::create()->build();
 
@@ -61,16 +70,21 @@ class SearchController extends Controller
             ],
         ];
 
-        // Perform the Elasticsearch search query
-        $response = $client->search([
-            'index' => 'ara_heyat_takhasosi',
-            'body' => [
-                'query' => $combinedQuery,
-            ],
-        ]);
+        // Perform the Elasticsearch search query for each selected table
+        $hits = [];
+        foreach ($tablesToSearch as $table) {
+            $response = $client->search([
+                'index' => $table,
+                'body' => [
+                    'query' => $combinedQuery,
+                ],
+            ]);
 
-        // Extract and return search results
-        $hits = $response['hits']['hits'];
+            // Extract and merge search results
+            $hits = array_merge($hits, $response['hits']['hits']);
+        }
+
+        // Return combined search results
         return response()->json($hits);
     }
 }
