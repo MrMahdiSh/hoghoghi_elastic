@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Elastic\Elasticsearch\ClientBuilder;
+use Elastic\Elasticsearch\Exception\ClientResponseException;
 
 class ImportCsvToElasticsearch extends Command
 {
@@ -29,7 +30,9 @@ class ImportCsvToElasticsearch extends Command
         }
 
         // Prepare bulk insert parameters
+        $batchSize = 100; // Adjust batch size as needed
         $params = ['body' => []];
+        $count = 0;
 
         // Read CSV file line by line and construct bulk insert parameters
         while (($line = fgetcsv($file)) !== FALSE) {
@@ -40,12 +43,21 @@ class ImportCsvToElasticsearch extends Command
             ];
 
             $params['body'][] = $this->mapCsvRowToDocument($line);
+            $count++;
+
+            // Insert batch when batch size reached
+            if ($count % $batchSize === 0) {
+                $this->bulkInsert($client, $params);
+                $params = ['body' => []];
+            }
+        }
+
+        // Insert remaining documents
+        if (!empty($params['body'])) {
+            $this->bulkInsert($client, $params);
         }
 
         fclose($file);
-
-        // Insert all documents in a single bulk request
-        $client->bulk($params);
 
         $this->info('CSV data imported to Elasticsearch successfully!');
     }
@@ -114,5 +126,25 @@ class ImportCsvToElasticsearch extends Command
             'created_at' => $line[14],
             'updated_at' => $line[15],
         ];
+    }
+
+    // Helper method to perform bulk insert with retry mechanism
+    private function bulkInsert($client, $params)
+    {
+        $maxAttempts = 3;
+        $attempt = 1;
+
+        while ($attempt <= $maxAttempts) {
+            try {
+                $client->bulk($params);
+                return;
+            } catch (ClientResponseException $e) {
+                $this->error("Bulk insert failed on attempt $attempt: " . $e->getMessage());
+                $attempt++;
+                usleep(500000); // Wait for 0.5 seconds before retrying
+            }
+        }
+
+        throw new \Exception("Bulk insert failed after $maxAttempts attempts.");
     }
 }
