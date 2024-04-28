@@ -25,8 +25,25 @@ class SearchController extends Controller
         // If a specific table is selected, use only that table
         $tablesToSearch = ($selectedTable && in_array($selectedTable, $defaultTables)) ? [$selectedTable] : $defaultTables;
 
+        // Get the from and to dates from the request
+        $fromDate = $request->input('from_date');
+        $toDate = $request->input('to_date');
+
+        // Get the page number and items per page from the request
+        $page = $request->input('page', 1);
+        $perPage = $request->input('per_page', 10);
+
+        // Calculate the offset based on the page number and items per page
+        $offset = ($page - 1) * $perPage;
+
+        // Get the exact match option from the request
+        $exactMatch = $request->input('exact_match', false);
+
         // Initialize Elasticsearch client
         $client = ClientBuilder::create()->build();
+
+        // Calculate the offset based on the page number and items per page
+        $offset = ($page - 1) * $perPage;
 
         // Initialize an array to store the Elasticsearch queries
         $elasticsearchQueries = [];
@@ -40,8 +57,14 @@ class SearchController extends Controller
             $queryText = $query['text'];
             $queryType = $query['type'];
 
-            // Define the Elasticsearch query based on the type
-            if ($queryType === 'and') {
+            // Define the Elasticsearch query based on the type and exact match option
+            if ($exactMatch && $queryType === 'and') {
+                $elasticsearchQuery = [
+                    'term' => [
+                        'content' => $queryText,
+                    ],
+                ];
+            } elseif ($queryType === 'and') {
                 $elasticsearchQuery = [
                     'match' => [
                         'content' => $queryText,
@@ -62,6 +85,35 @@ class SearchController extends Controller
             $mustNotClause[] = ['match' => ['content' => $word]];
         }
 
+        // Initialize the date range query
+        $dateRangeQuery = [];
+        if ($fromDate && $toDate) {
+            $dateRangeQuery = [
+                'range' => [
+                    'date' => [
+                        'gte' => $fromDate,
+                        'lte' => $toDate,
+                    ],
+                ],
+            ];
+        } elseif ($fromDate) {
+            $dateRangeQuery = [
+                'range' => [
+                    'date' => [
+                        'gte' => $fromDate,
+                    ],
+                ],
+            ];
+        } elseif ($toDate) {
+            $dateRangeQuery = [
+                'range' => [
+                    'date' => [
+                        'lte' => $toDate,
+                    ],
+                ],
+            ];
+        }
+
         // Combine all Elasticsearch queries using 'should' for 'and' queries
         $combinedQuery = [
             'bool' => [
@@ -70,21 +122,40 @@ class SearchController extends Controller
             ],
         ];
 
-        // Perform the Elasticsearch search query for each selected table
+        // Add the date range query to the combined query
+        if (!empty($dateRangeQuery)) {
+            $combinedQuery['bool']['filter'] = $dateRangeQuery;
+        }
+
+        // Perform the Elasticsearch search query for each selected table with pagination
         $hits = [];
+        $totalHits = 0;
         foreach ($tablesToSearch as $table) {
             $response = $client->search([
                 'index' => $table,
                 'body' => [
                     'query' => $combinedQuery,
+                    'from' => $offset, // Offset for pagination
+                    'size' => $perPage, // Number of items per page
                 ],
             ]);
 
             // Extract and merge search results
             $hits = array_merge($hits, $response['hits']['hits']);
+            $totalHits += $response['hits']['total']['value'];
         }
+        // Calculate pagination details
+        $totalPages = ceil($totalHits / $perPage);
 
         // Return combined search results
-        return response()->json($hits);
+        return response()->json([
+            'hits' => $hits,
+            'pagination' => [
+                'total_hits' => $totalHits,
+                'total_pages' => $totalPages,
+                'current_page' => $page,
+                'per_page' => $perPage,
+            ],
+        ]);
     }
 }
