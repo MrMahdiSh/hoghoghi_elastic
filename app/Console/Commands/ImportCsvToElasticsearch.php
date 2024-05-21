@@ -118,6 +118,7 @@ class ImportCsvToElasticsearch extends Command
                     'status' => $line[13],
                     'created_at' => $line[14],
                     'updated_at' => $line[15],
+                    'timestamp' => $line[16],
                 ];
             case 'ara_heyat_takhasosi':
                 return [
