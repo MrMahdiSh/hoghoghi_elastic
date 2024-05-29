@@ -91,30 +91,61 @@ class SearchController extends Controller
         // Initialize the date range query
         $dateRangeQuery = [];
         if ($fromDate && $toDate) {
-            $dateRangeQuery = [
-                'range' => [
-                    'date' => [
-                        'gte' => $fromDate,
-                        'lte' => $toDate,
+            if ($selectedTable == 'ara_heyat') {
+                $dateRangeQuery = [
+                    'range' => [
+                        'timestamp' => [
+                            'gte' => $fromDate,
+                            'lte' => $toDate,
+                        ],
                     ],
-                ],
-            ];
+                ];
+            } else {
+                $dateRangeQuery = [
+                    'range' => [
+                        'date' => [
+                            'gte' => $fromDate,
+                            'lte' => $toDate,
+                        ],
+                    ],
+                ];
+            }
         } elseif ($fromDate) {
-            $dateRangeQuery = [
-                'range' => [
-                    'date' => [
-                        'gte' => $fromDate,
+            if ($selectedTable == 'ara_heyat') {
+                $dateRangeQuery = [
+                    'range' => [
+                        'timestamp' => [
+                            'gte' => $fromDate,
+                        ],
                     ],
-                ],
-            ];
+                ];
+            } else {
+                $dateRangeQuery = [
+                    'range' => [
+                        'date' => [
+                            'gte' => $fromDate,
+                        ],
+                    ],
+                ];
+            }
         } elseif ($toDate) {
-            $dateRangeQuery = [
-                'range' => [
-                    'date' => [
-                        'lte' => $toDate,
+            if ($selectedTable == 'ara_heyat') {
+                $dateRangeQuery = [
+                    'range' => [
+                        'timestamp' => [
+                            'lte' => $toDate,
+                        ],
                     ],
-                ],
-            ];
+                ];
+            } else {
+                $dateRangeQuery = [
+                    'range' => [
+                        'date' => [
+                            'lte' => $toDate,
+                        ],
+                    ],
+                ];
+            }
         }
 
         // Combine all Elasticsearch queries using 'should' for 'and' queries
