@@ -52,31 +52,34 @@ class SearchController extends Controller
         $excludeWords = [];
 
         // Process each search query
-        foreach ($searchQueries as $query) {
-            // Extract text and type from the query
-            $queryText = $query['text'];
-            $queryType = $query['type'];
+        if (!empty($searchQueries)) {
 
-            // Define the Elasticsearch query based on the type and exact match option
-            if ($exactMatch && $queryType === 'and') {
-                $elasticsearchQuery = [
-                    'term' => [
-                        'content' => $queryText,
-                    ],
-                ];
-            } elseif ($queryType === 'and') {
-                $elasticsearchQuery = [
-                    'match' => [
-                        'content' => $queryText,
-                    ],
-                ];
-            } elseif ($queryType === 'not') {
-                // Extract words to exclude from the "not" query
-                $excludeWords[] = $queryText;
+            foreach ($searchQueries as $query) {
+                // Extract text and type from the query
+                $queryText = $query['text'];
+                $queryType = $query['type'];
+
+                // Define the Elasticsearch query based on the type and exact match option
+                if ($exactMatch && $queryType === 'and') {
+                    $elasticsearchQuery = [
+                        'term' => [
+                            'content' => $queryText,
+                        ],
+                    ];
+                } elseif ($queryType === 'and') {
+                    $elasticsearchQuery = [
+                        'match' => [
+                            'content' => $queryText,
+                        ],
+                    ];
+                } elseif ($queryType === 'not') {
+                    // Extract words to exclude from the "not" query
+                    $excludeWords[] = $queryText;
+                }
+
+                // Add the Elasticsearch query to the array
+                $elasticsearchQueries[] = $elasticsearchQuery ?? null;
             }
-
-            // Add the Elasticsearch query to the array
-            $elasticsearchQueries[] = $elasticsearchQuery ?? null;
         }
 
         // Construct the must_not clause to exclude documents containing the specified words
