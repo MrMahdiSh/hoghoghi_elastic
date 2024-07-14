@@ -12,139 +12,87 @@ class SearchController extends Controller
     {
         // Get the search queries JSON from the request
         $searchQueriesJson = $request->input('search_queries');
-
-        // Decode the JSON to an array
-        $searchQueries = json_decode($searchQueriesJson, true);
-
-        // Get the selected table from the request
         $selectedTable = $request->input('table_name');
-
-        // Define the default tables to search across
-        $defaultTables = ['ara_heyat', 'ara_heyat_takhasosi', 'moghararat', 'nazarat_mashverati', 'qazayi', 'posts', 'ara_jadid'];
-
-        // If a specific table is selected, use only that table
-        $tablesToSearch = ($selectedTable && in_array($selectedTable, $defaultTables)) ? [$selectedTable] : $defaultTables;
-
-        // Get the from and to dates from the request
         $fromDate = $request->input('from_date');
         $toDate = $request->input('to_date');
-
-        // Get the page number and items per page from the request
         $page = $request->input('page', 1);
         $perPage = $request->input('per_page', 10);
-
-        // Calculate the offset based on the page number and items per page
-        $offset = ($page - 1) * $perPage;
-
-        // Get the exact match option from the request
         $exactMatch = $request->input('exact_match', false);
+
+        // Decode search queries JSON
+        $searchQueries = json_decode($searchQueriesJson, true);
+
+        // Default tables to search across
+        $defaultTables = ['ara_heyat', 'ara_heyat_takhasosi', 'moghararat', 'nazarat_mashverati', 'qazayi', 'posts', 'ara_jadid'];
+
+        // Define specific fields to search for each table
+        $tableFields = [
+            'ara_heyat' => ['content'],
+            'ara_heyat_takhasosi' => ['content'],
+            'moghararat' => ['content'],
+            'nazarat_mashverati' => ['content'],
+            'qazayi' => ['content'],
+            'posts' => ['content'],
+            'ara_jadid' => ['content'],
+        ];
+
+        // Determine tables to search
+        $tablesToSearch = ($selectedTable && in_array($selectedTable, $defaultTables)) ? [$selectedTable] : $defaultTables;
 
         // Initialize Elasticsearch client
         $client = ClientBuilder::create()->build();
 
-        // Calculate the offset based on the page number and items per page
-        $offset = ($page - 1) * $perPage;
-
-        // Initialize an array to store the Elasticsearch queries
+        // Initialize arrays for Elasticsearch queries
         $elasticsearchQueries = [];
-
-        // Initialize an array to store words to exclude
         $excludeWords = [];
 
         // Process each search query
         if (!empty($searchQueries)) {
-
             foreach ($searchQueries as $query) {
-                // Extract text and type from the query
                 $queryText = $query['text'];
                 $queryType = $query['type'];
 
-                // Define the Elasticsearch query based on the type and exact match option
-                if ($exactMatch && $queryType === 'and') {
-                    $elasticsearchQuery = [
-                        'term' => [
-                            'content' => $queryText,
-                        ],
-                    ];
-                } elseif ($queryType === 'and') {
-                    $elasticsearchQuery = [
-                        'match' => [
-                            'content' => $queryText,
-                        ],
-                    ];
+                // Construct Elasticsearch query based on type and fields
+                if ($queryType === 'and') {
+                    $matchQueries = [];
+                    foreach ($tablesToSearch as $table) {
+                        foreach ($tableFields[$table] as $field) {
+                            if ($exactMatch) {
+                                // Exact match phrase with no slop
+                                $matchQueries[] = ['match_phrase' => [$field => ['query' => $queryText, 'slop' => 0]]];
+                            } else {
+                                // Match phrase with slop for near matches
+                                $matchQueries[] = ['match_phrase' => [$field => ['query' => $queryText, 'slop' => 200]]];
+                            }
+                        }
+                    }
+                    $elasticsearchQueries[] = ['bool' => ['should' => $matchQueries]];
                 } elseif ($queryType === 'not') {
-                    // Extract words to exclude from the "not" query
                     $excludeWords[] = $queryText;
                 }
-
-                // Add the Elasticsearch query to the array
-                $elasticsearchQueries[] = $elasticsearchQuery ?? null;
             }
         }
 
         // Construct the must_not clause to exclude documents containing the specified words
         $mustNotClause = [];
         foreach ($excludeWords as $word) {
-            $mustNotClause[] = ['match' => ['content' => $word]];
+            foreach ($tablesToSearch as $table) {
+                foreach ($tableFields[$table] as $field) {
+                    $mustNotClause[] = ['match' => [$field => $word]];
+                }
+            }
         }
 
-        // Initialize the date range query
+        // Construct date range query
+        $dateRangeField = ($selectedTable == 'ara_heyat') ? 'timestamp' : 'date';
         $dateRangeQuery = [];
-        if ($fromDate && $toDate) {
-            if ($selectedTable == 'ara_heyat') {
-                $dateRangeQuery = [
-                    'range' => [
-                        'timestamp' => [
-                            'gte' => $fromDate,
-                            'lte' => $toDate,
-                        ],
-                    ],
-                ];
-            } else {
-                $dateRangeQuery = [
-                    'range' => [
-                        'date' => [
-                            'gte' => $fromDate,
-                            'lte' => $toDate,
-                        ],
-                    ],
-                ];
+        if ($fromDate || $toDate) {
+            $dateRangeQuery = ['range' => []];
+            if ($fromDate) {
+                $dateRangeQuery['range'][$dateRangeField]['gte'] = $fromDate;
             }
-        } elseif ($fromDate) {
-            if ($selectedTable == 'ara_heyat') {
-                $dateRangeQuery = [
-                    'range' => [
-                        'timestamp' => [
-                            'gte' => $fromDate,
-                        ],
-                    ],
-                ];
-            } else {
-                $dateRangeQuery = [
-                    'range' => [
-                        'date' => [
-                            'gte' => $fromDate,
-                        ],
-                    ],
-                ];
-            }
-        } elseif ($toDate) {
-            if ($selectedTable == 'ara_heyat') {
-                $dateRangeQuery = [
-                    'range' => [
-                        'timestamp' => [
-                            'lte' => $toDate,
-                        ],
-                    ],
-                ];
-            } else {
-                $dateRangeQuery = [
-                    'range' => [
-                        'date' => [
-                            'lte' => $toDate,
-                        ],
-                    ],
-                ];
+            if ($toDate) {
+                $dateRangeQuery['range'][$dateRangeField]['lte'] = $toDate;
             }
         }
 
@@ -161,23 +109,30 @@ class SearchController extends Controller
             $combinedQuery['bool']['filter'] = $dateRangeQuery;
         }
 
-        // Perform the Elasticsearch search query for each selected table with pagination
+        // Perform search query for each table with pagination
         $hits = [];
         $totalHits = 0;
-        foreach ($tablesToSearch as $table) {
-            $response = $client->search([
-                'index' => $table,
-                'body' => [
-                    'query' => $combinedQuery,
-                    'from' => $offset, // Offset for pagination
-                    'size' => $perPage, // Number of items per page
-                ],
-            ]);
+        $offset = ($page - 1) * $perPage;
 
-            // Extract and merge search results
-            $hits = array_merge($hits, $response['hits']['hits']);
-            $totalHits += $response['hits']['total']['value'];
+        foreach ($tablesToSearch as $table) {
+            try {
+                $response = $client->search([
+                    'index' => $table,
+                    'body' => [
+                        'query' => $combinedQuery,
+                        'from' => $offset,
+                        'size' => $perPage,
+                    ],
+                ]);
+
+                $hits = array_merge($hits, $response['hits']['hits']);
+                $totalHits += $response['hits']['total']['value'];
+            } catch (\Exception $e) {
+                // Handle Elasticsearch query exception
+                return response()->json(['error' => 'Failed to retrieve search results.']);
+            }
         }
+
         // Calculate pagination details
         $totalPages = ceil($totalHits / $perPage);
 
