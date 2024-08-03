@@ -8,5 +8,23 @@ use Illuminate\Routing\Controller as BaseController;
 
 class Controller extends BaseController
 {
+    /**
+     * @OA\Info(
+     *     title="Hoghogi Search",
+     *     version="1.0.0",
+     *     description="API documention",
+     *     termsOfService="https://jsonTeam.ir",
+     *     contact={
+     *         "name"="mahdi",  
+     *         "email"="mahdishoorabi@gmail.com",
+     *         "url"="https://jsonTeam.ir"
+     *     },
+     *     license={
+     *         "name"="License Name",
+     *         "url"="https://jsonTeam.ir"
+     *     }
+     * )
+     */
+
     use AuthorizesRequests, ValidatesRequests;
 }
