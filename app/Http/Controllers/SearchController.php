@@ -76,13 +76,13 @@ class SearchController extends Controller
 
         // Define specific fields to search for each table
         $tableFields = [
-            'ara_heyat' => ['content'],
-            'ara_heyat_takhasosi' => ['content'],
-            'moghararat' => ['content'],
-            'nazarat_mashverati' => ['content'],
-            'qazayi' => ['content'],
-            'posts' => ['content'],
-            'ara_jadid' => ['content'],
+            'ara_heyat' => ['content', 'shomare_dadnameh', 'title'],
+            'ara_heyat_takhasosi' => ['content', 'shomare_dadnameh', 'title'],
+            'moghararat' => ['content', 'title'],
+            'nazarat_mashverati' => ['content', 'title', 'number'],
+            'qazayi' => ['content', 'title', 'number', 'estelam', 'nazarie_mashverati', 'shomare_nazarie', 'shomare_parvande'],
+            'posts' => ['content', 'title'],
+            'ara_jadid' => ['content', 'title', 'shnumber'],
         ];
 
         // Determine tables to search
