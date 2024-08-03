@@ -8,6 +8,55 @@ use Elastic\Elasticsearch\ClientBuilder;
 
 class SearchController extends Controller
 {
+    /**
+     * @OA\Post(
+     *     path="/search",
+     *     summary="Search across multiple tables",
+     *     description="Searches for records across specified tables with given criteria.",
+     *     operationId="searchRecords",
+     *     tags={"Search"},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             @OA\Property(property="search_queries", type="string", description="JSON string of search queries"),
+     *             @OA\Property(property="table_name", type="string", description="Table to search, optional. Defaults to all tables."),
+     *             @OA\Property(property="from_date", type="string", format="date", description="Start date for the search range, optional."),
+     *             @OA\Property(property="to_date", type="string", format="date", description="End date for the search range, optional."),
+     *             @OA\Property(property="page", type="integer", description="Page number for pagination, optional. Defaults to 1."),
+     *             @OA\Property(property="per_page", type="integer", description="Number of results per page, optional. Defaults to 10."),
+     *             @OA\Property(property="exact_match", type="boolean", description="Whether to use exact match, optional. Defaults to false."),
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Search results successfully returned",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="hits", type="array", @OA\Items(type="object")),
+     *             @OA\Property(property="pagination", type="object",
+     *                 @OA\Property(property="total_hits", type="integer"),
+     *                 @OA\Property(property="total_pages", type="integer"),
+     *                 @OA\Property(property="current_page", type="integer"),
+     *                 @OA\Property(property="per_page", type="integer")
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Bad Request",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="error", type="string", example="Invalid search parameters")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Internal Server Error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="error", type="string", example="Failed to retrieve search results")
+     *         )
+     *     )
+     * )
+     */
+
     public function search(Request $request)
     {
         // Get the search queries JSON from the request

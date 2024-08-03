@@ -1,0 +1,147 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Hoghogi Search",
+        "description": "API documention",
+        "termsOfService": "https://jsonTeam.ir",
+        "contact": {
+            "name": "mahdi",
+            "email": "mahdishoorabi@gmail.com",
+            "url": "https://jsonTeam.ir"
+        },
+        "license": {
+            "name": "License Name",
+            "url": "https://jsonTeam.ir"
+        },
+        "version": "1.0.0"
+    },
+    "paths": {
+        "/search": {
+            "post": {
+                "tags": [
+                    "Search"
+                ],
+                "summary": "Search across multiple tables",
+                "description": "Searches for records across specified tables with given criteria.",
+                "operationId": "searchRecords",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "search_queries": {
+                                        "description": "JSON string of search queries",
+                                        "type": "string"
+                                    },
+                                    "table_name": {
+                                        "description": "Table to search, optional. Defaults to all tables.",
+                                        "type": "string"
+                                    },
+                                    "from_date": {
+                                        "description": "Start date for the search range, optional.",
+                                        "type": "string",
+                                        "format": "date"
+                                    },
+                                    "to_date": {
+                                        "description": "End date for the search range, optional.",
+                                        "type": "string",
+                                        "format": "date"
+                                    },
+                                    "page": {
+                                        "description": "Page number for pagination, optional. Defaults to 1.",
+                                        "type": "integer"
+                                    },
+                                    "per_page": {
+                                        "description": "Number of results per page, optional. Defaults to 10.",
+                                        "type": "integer"
+                                    },
+                                    "exact_match": {
+                                        "description": "Whether to use exact match, optional. Defaults to false.",
+                                        "type": "boolean"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Search results successfully returned",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "hits": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "pagination": {
+                                            "properties": {
+                                                "total_hits": {
+                                                    "type": "integer"
+                                                },
+                                                "total_pages": {
+                                                    "type": "integer"
+                                                },
+                                                "current_page": {
+                                                    "type": "integer"
+                                                },
+                                                "per_page": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Invalid search parameters"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Failed to retrieve search results"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Search",
+            "description": "Search"
+        }
+    ]
+}
