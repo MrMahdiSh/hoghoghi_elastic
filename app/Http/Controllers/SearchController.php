@@ -203,4 +203,58 @@ class SearchController extends Controller
             ],
         ]);
     }
+
+    /**
+     * @OA\Get(
+     *     path="/total-rows",
+     *     summary="Get total number of rows across multiple tables",
+     *     description="Returns the total count of rows across specified tables in Elasticsearch.",
+     *     operationId="getTotalRows",
+     *     tags={"Statistics"},
+     *     @OA\Response(
+     *         response=200,
+     *         description="Total row count successfully returned",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="total_rows", type="integer", description="Total number of rows across all specified tables")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Internal Server Error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="error", type="string", example="Failed to retrieve row count")
+     *         )
+     *     )
+     * )
+     */
+
+    public function getTotalRows()
+    {
+        $tableFields = [
+            'ara_heyat',
+            'ara_heyat_takhasosi',
+            'moghararat',
+            'nazarat_mashverati',
+            'qazayi',
+            'posts',
+            'ara_jadid',
+        ];
+
+        $totalCount = 0;
+
+        foreach ($tableFields as $index) {
+            $params = [
+                'index' => $index,
+                'body'  => [
+                    'query' => [
+                        'match_all' => (object)[]
+                    ]
+                ]
+            ];
+            $totalCount += count($params);
+        }
+
+        // Return the total count as a JSON response
+        return response()->json(['total_rows' => $totalCount]);
+    }
 }

@@ -21,4 +21,3 @@ use App\Http\Controllers\SearchController;
 
 
 Route::get('/search', [SearchController::class, 'search']);
-Route::get('/info/total-rows', [SearchController::class, 'getTotalRows']);
