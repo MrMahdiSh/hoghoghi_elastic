@@ -67,6 +67,7 @@ class SearchController extends Controller
         $page = $request->input('page', 1);
         $perPage = $request->input('per_page', 10);
         $exactMatch = $request->input('exact_match', false);
+        $isPro = $request->input('is_pro', false);
 
         // Decode search queries JSON
         $searchQueries = json_decode($searchQueriesJson, true);
@@ -184,6 +185,12 @@ class SearchController extends Controller
 
         // Calculate pagination details
         $totalPages = ceil($totalHits / $perPage);
+
+        if (!$isPro) {
+            foreach ($hits as &$hit) {
+                $hit['_source']['content'] = substr($hit['_source']['content'], 0, 100) . '...';
+            }
+        }
 
         // Return combined search results
         return response()->json([
