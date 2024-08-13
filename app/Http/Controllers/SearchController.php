@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Services\ElasticsearchService;
 use Illuminate\Http\Request;
 use Elastic\Elasticsearch\ClientBuilder;
+use Psy\CodeCleaner\ReturnTypePass;
 
 class SearchController extends Controller
 {
@@ -68,6 +69,8 @@ class SearchController extends Controller
         $perPage = $request->input('per_page', 10);
         $exactMatch = $request->input('exact_match', false);
         $isPro = $request->input('is_pro', false);
+        $selectedField = $request->input('field', 'content');
+        $defaultField = 'table';
 
         // Decode search queries JSON
         $searchQueries = json_decode($searchQueriesJson, true);
@@ -89,6 +92,8 @@ class SearchController extends Controller
         // Determine tables to search
         $tablesToSearch = ($selectedTable && in_array($selectedTable, $defaultTables)) ? [$selectedTable] : $defaultTables;
 
+        $selectedField = (($selectedTable && in_array($selectedTable, $defaultTables)) && in_array($selectedField, $tableFields[$selectedTable])) ? $selectedField : $defaultField;
+
         // Initialize Elasticsearch client
         $client = ClientBuilder::create()->build();
 
@@ -106,16 +111,17 @@ class SearchController extends Controller
                 if ($queryType === 'and') {
                     $matchQueries = [];
                     foreach ($tablesToSearch as $table) {
-                        foreach ($tableFields[$table] as $field) {
+                        if (in_array($selectedField, $tableFields[$table])) {
                             if ($exactMatch) {
                                 // Exact match phrase with no slop
-                                $matchQueries[] = ['match_phrase' => [$field => ['query' => $queryText, 'slop' => 0]]];
+                                $matchQueries[] = ['match_phrase' => [$selectedField => ['query' => $queryText, 'slop' => 0]]];
                             } else {
                                 // Match phrase with slop for near matches
-                                $matchQueries[] = ['match_phrase' => [$field => ['query' => $queryText, 'slop' => 200]]];
+                                $matchQueries[] = ['match_phrase' => [$selectedField => ['query' => $queryText, 'slop' => 200]]];
                             }
                         }
                     }
+
                     $elasticsearchQueries[] = ['bool' => ['should' => $matchQueries]];
                 } elseif ($queryType === 'not') {
                     $excludeWords[] = $queryText;
@@ -230,7 +236,10 @@ class SearchController extends Controller
 
     public function getTotalRows()
     {
-        $tableFields = [
+        $client = ClientBuilder::create()->build();
+
+        // List of indices
+        $indices = [
             'ara_heyat',
             'ara_heyat_takhasosi',
             'moghararat',
@@ -240,21 +249,32 @@ class SearchController extends Controller
             'ara_jadid',
         ];
 
+        // Array to hold the counts
+        $counts = [];
         $totalCount = 0;
 
-        foreach ($tableFields as $index) {
+
+        foreach ($indices as $index) {
+            // Specify the index name
             $params = [
                 'index' => $index,
-                'body'  => [
-                    'query' => [
-                        'match_all' => (object)[]
-                    ]
-                ]
             ];
-            $totalCount += count($params);
+
+            // Use the _count API to get the number of documents
+            $response = $client->count($params);
+
+            // Get the count from the response and store it in the array
+            $count = $response['count'];
+            $counts[$index] = $count;
+
+            // Add to the total count
+            $totalCount += $count;
         }
 
-        // Return the total count as a JSON response
-        return response()->json(['total_rows' => $totalCount]);
+        // Include the total count in the response
+        $counts['total'] = $totalCount;
+
+        // Return the counts and total as a JSON response
+        return response()->json($counts);
     }
 }
