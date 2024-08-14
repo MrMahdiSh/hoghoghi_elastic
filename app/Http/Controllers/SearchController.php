@@ -70,10 +70,14 @@ class SearchController extends Controller
         $exactMatch = $request->input('exact_match', false);
         $isPro = $request->input('is_pro', false);
         $selectedField = $request->input('field', 'content');
-        $defaultField = 'table';
+        $defaultField = 'content';
 
         // Decode search queries JSON
         $searchQueries = json_decode($searchQueriesJson, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            return response()->json(['error' => 'Invalid JSON in search queries.'], 400);
+        }
 
         // Default tables to search across
         $defaultTables = ['ara_heyat', 'ara_heyat_takhasosi', 'moghararat', 'nazarat_mashverati', 'qazayi', 'posts', 'ara_jadid'];
@@ -143,7 +147,7 @@ class SearchController extends Controller
         $dateRangeField = ($selectedTable == 'ara_heyat') ? 'timestamp' : 'date';
         $dateRangeQuery = [];
         if ($fromDate || $toDate) {
-            $dateRangeQuery = ['range' => []];
+            $dateRangeQuery = ['range' => [$dateRangeField => []]];
             if ($fromDate) {
                 $dateRangeQuery['range'][$dateRangeField]['gte'] = $fromDate;
             }
@@ -193,21 +197,27 @@ class SearchController extends Controller
         $totalPages = ceil($totalHits / $perPage);
 
         if (!$isPro) {
-            foreach ($hits as &$hit) {
-                $hit['_source']['content'] = substr($hit['_source']['content'], 0, 100) . '...';
-            }
+            array_walk($hits, function (&$hit) {
+                if (isset($hit['_source']['content'])) {
+                    $hit['_source']['content'] = substr($hit['_source']['content'], 0, 100) . '...';
+                }
+            });
         }
 
         // Return combined search results
-        return response()->json([
-            'hits' => $hits,
+        $response = [
+            'hits' => array_map(function ($hit) {
+                return mb_convert_encoding($hit, 'UTF-8', 'UTF-8');
+            }, $hits),
             'pagination' => [
                 'total_hits' => $totalHits,
                 'total_pages' => $totalPages,
                 'current_page' => $page,
                 'per_page' => $perPage,
             ],
-        ]);
+        ];
+
+        return response($response);
     }
 
     /**
