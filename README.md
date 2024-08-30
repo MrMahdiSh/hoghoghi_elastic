@@ -2,6 +2,8 @@ this is how to run the importer
 
 php artisan import:csv-to-elasticsearch path/to/your/csv_file.csv
 
+php artisan import:csv-to-elasticsearch storage/tbl_f_tahrir.csv tbl_f_tahrir
+
 # Close the index
 curl -XPOST "http://localhost:9200/ara_heyat/_close"
 
